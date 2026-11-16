@@ -1,0 +1,441 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global primitive helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function validCreateTimestamps(data) {
+      return data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function validUpdateTimestamps(data) {
+      return data.createdAt == existing().createdAt &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function optStr(data, key, maxLen) {
+      return !(key in data) || data[key] == null || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function optInt(data, key) {
+      return !(key in data) || data[key] == null || data[key] is int;
+    }
+
+    function optNum(data, key) {
+      return !(key in data) || data[key] == null || data[key] is number;
+    }
+
+    function optBool(data, key) {
+      return !(key in data) || data[key] == null || data[key] is bool;
+    }
+
+    function optStringList(data, key, maxSize) {
+      return !(key in data) || data[key] == null || (
+        data[key] is list &&
+        data[key].size() <= maxSize &&
+        (data[key].size() == 0 || data[key][0] is string)
+      );
+    }
+
+    function optMapList(data, key, maxSize) {
+      return !(key in data) || data[key] == null || (
+        data[key] is list &&
+        data[key].size() <= maxSize &&
+        (data[key].size() == 0 || data[key][0] is map)
+      );
+    }
+
+    // 1. UserProfile validation
+    function isValidUserProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.languageCode in ['en', 'bn'] &&
+             data.themeMode in ['system', 'light', 'dark', 'romantic'] &&
+             optStr(data, 'email', 200) &&
+             optStr(data, 'photoUrl', 500) &&
+             optInt(data, 'birthDateMillis') &&
+             optInt(data, 'birthTimeMinutes') &&
+             optStr(data, 'timezoneId', 80) &&
+             optStr(data, 'privacyPinHash', 128) &&
+             optBool(data, 'biometricEnabled') &&
+             optBool(data, 'notificationsEnabled') &&
+             optInt(data, 'dailyMemoryHour');
+    }
+
+    // 2. AgeProfile validation
+    function isValidAgeProfile(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.birthDateMillis is int &&
+             optStr(data, 'relation', 60) &&
+             optInt(data, 'birthTimeMinutes') &&
+             optBool(data, 'isSelf') &&
+             optStr(data, 'notes', 500);
+    }
+
+    // 3. Relationship validation
+    function isValidRelationship(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.partnerName is string && data.partnerName.size() >= 1 && data.partnerName.size() <= 100 &&
+             data.startDateMillis is int &&
+             optInt(data, 'partnerBirthdayMillis') &&
+             optStr(data, 'partnerPhotoUri', 500) &&
+             optInt(data, 'firstMeetingMillis') &&
+             optInt(data, 'firstConversationMillis') &&
+             optInt(data, 'firstMessageMillis') &&
+             optInt(data, 'firstPhoneCallMillis') &&
+             optInt(data, 'firstVideoCallMillis') &&
+             optInt(data, 'firstDateMillis') &&
+             optInt(data, 'firstProposalMillis') &&
+             optInt(data, 'firstKissMillis') &&
+             optInt(data, 'firstGiftMillis') &&
+             optInt(data, 'engagementDateMillis') &&
+             optInt(data, 'weddingDateMillis') &&
+             optStr(data, 'storyNote', 1000) &&
+             optBool(data, 'isPrimary');
+    }
+
+    // 4. Friendship validation
+    function isValidFriendship(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.friendName is string && data.friendName.size() >= 1 && data.friendName.size() <= 100 &&
+             data.startDateMillis is int &&
+             optBool(data, 'isBestFriend') &&
+             optInt(data, 'firstMeetingMillis') &&
+             optInt(data, 'birthdayMillis') &&
+             optStr(data, 'photoUri', 500) &&
+             optStr(data, 'notes', 1000);
+    }
+
+    // 5. FriendGroup validation
+    function isValidFriendGroup(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.creationDateMillis is int &&
+             optStr(data, 'pictureUri', 500) &&
+             optInt(data, 'firstMeetingMillis') &&
+             optMapList(data, 'members', 30) &&
+             optStr(data, 'notes', 1000);
+    }
+
+    // 6. LifeMoment validation
+    function isValidLifeMoment(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.eventDateMillis is int &&
+             optStr(data, 'location', 150) &&
+             optStr(data, 'description', 2000) &&
+             optStr(data, 'notes', 1000) &&
+             optStringList(data, 'mediaUris', 10) &&
+             optStr(data, 'mediaType', 30) &&
+             optStr(data, 'albumName', 80) &&
+             optBool(data, 'isFavorite') &&
+             optBool(data, 'reminderEnabled');
+    }
+
+    // 7. GiftItem validation
+    function isValidGiftItem(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 150 &&
+             data.occasion is string && data.occasion.size() >= 1 && data.occasion.size() <= 50 &&
+             data.direction in ['giving', 'received', 'wishlist'] &&
+             data.status in ['planned', 'purchased', 'given'] &&
+             optStr(data, 'recipientName', 100) &&
+             optStr(data, 'giverName', 100) &&
+             optNum(data, 'budget') &&
+             optInt(data, 'purchaseDateMillis') &&
+             optInt(data, 'givingDateMillis') &&
+             optStr(data, 'photoUri', 500) &&
+             optStr(data, 'notes', 1000) &&
+             optBool(data, 'reminderEnabled');
+    }
+
+    // 8. SpecialEvent validation
+    function isValidSpecialEvent(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.eventDateMillis is int &&
+             optBool(data, 'isRecurringYearly') &&
+             optBool(data, 'isFavorite') &&
+             optBool(data, 'notify30Days') &&
+             optBool(data, 'notify7Days') &&
+             optBool(data, 'notify3Days') &&
+             optBool(data, 'notify1Day') &&
+             optBool(data, 'notifyOnDay') &&
+             optInt(data, 'notifyHour') &&
+             optInt(data, 'notifyMinute') &&
+             optStr(data, 'notes', 500);
+    }
+
+    // 9. SurprisePlan validation
+    function isValidSurprisePlan(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.occasion is string && data.occasion.size() >= 1 && data.occasion.size() <= 50 &&
+             data.celebrationDateMillis is int &&
+             optStr(data, 'location', 150) &&
+             optNum(data, 'budget') &&
+             optStr(data, 'giftIdea', 200) &&
+             optStr(data, 'cakeAndFood', 300) &&
+             optStringList(data, 'guestList', 30) &&
+             optStringList(data, 'decorations', 30) &&
+             optStringList(data, 'completedDecorations', 30) &&
+             optStr(data, 'privateNotes', 1000) &&
+             optBool(data, 'reminderEnabled');
+    }
+
+    // 10. LoveLetter validation
+    function isValidLoveLetter(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.body is string && data.body.size() >= 1 && data.body.size() <= 5000 &&
+             optStr(data, 'recipient', 100) &&
+             optInt(data, 'scheduledDateMillis') &&
+             optBool(data, 'isLockedUntilDate') &&
+             optBool(data, 'isFavorite');
+    }
+
+    // 11. BucketListItem validation
+    function isValidBucketListItem(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 150 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.isCompleted is bool &&
+             optInt(data, 'targetDateMillis') &&
+             optInt(data, 'completedDateMillis') &&
+             optStr(data, 'notes', 500);
+    }
+
+    // 12. NotificationSetting validation
+    function isValidNotificationSetting(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.enabled is bool &&
+             optInt(data, 'targetDateMillis') &&
+             optInt(data, 'hour') &&
+             optInt(data, 'minute') &&
+             optBool(data, 'repeatYearly') &&
+             optStr(data, 'soundName', 60);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'languageCode', 'themeMode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'photoUrl', 'birthDateMillis', 'birthTimeMinutes', 'timezoneId', 'languageCode', 'themeMode', 'privacyPinHash', 'biometricEnabled', 'notificationsEnabled', 'dailyMemoryHour', 'createdAt', 'updatedAt']) &&
+                       validCreateTimestamps(incoming()) &&
+                       isValidUserProfile(incoming(), userId);
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       validUpdateTimestamps(incoming()) &&
+                       isValidUserProfile(incoming(), userId) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoUrl', 'birthDateMillis', 'birthTimeMinutes', 'timezoneId', 'languageCode', 'themeMode', 'privacyPinHash', 'biometricEnabled', 'notificationsEnabled', 'dailyMemoryHour', 'updatedAt']);
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /ageProfiles/{profileId} {
+        allow get: if isOwner(userId) && isValidId(profileId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(profileId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'birthDateMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'relation', 'birthDateMillis', 'birthTimeMinutes', 'isSelf', 'notes', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidAgeProfile(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(profileId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidAgeProfile(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'relation', 'birthDateMillis', 'birthTimeMinutes', 'isSelf', 'notes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(profileId);
+      }
+
+      match /relationships/{relationshipId} {
+        allow get: if isOwner(userId) && isValidId(relationshipId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(relationshipId) &&
+                         incoming().keys().hasAll(['userId', 'partnerName', 'startDateMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'partnerName', 'partnerBirthdayMillis', 'partnerPhotoUri', 'startDateMillis', 'firstMeetingMillis', 'firstConversationMillis', 'firstMessageMillis', 'firstPhoneCallMillis', 'firstVideoCallMillis', 'firstDateMillis', 'firstProposalMillis', 'firstKissMillis', 'firstGiftMillis', 'engagementDateMillis', 'weddingDateMillis', 'storyNote', 'isPrimary', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidRelationship(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(relationshipId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidRelationship(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['partnerName', 'partnerBirthdayMillis', 'partnerPhotoUri', 'startDateMillis', 'firstMeetingMillis', 'firstConversationMillis', 'firstMessageMillis', 'firstPhoneCallMillis', 'firstVideoCallMillis', 'firstDateMillis', 'firstProposalMillis', 'firstKissMillis', 'firstGiftMillis', 'engagementDateMillis', 'weddingDateMillis', 'storyNote', 'isPrimary', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(relationshipId);
+      }
+
+      match /friendships/{friendshipId} {
+        allow get: if isOwner(userId) && isValidId(friendshipId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(friendshipId) &&
+                         incoming().keys().hasAll(['userId', 'friendName', 'startDateMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'friendName', 'isBestFriend', 'startDateMillis', 'firstMeetingMillis', 'birthdayMillis', 'photoUri', 'notes', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidFriendship(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(friendshipId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidFriendship(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['friendName', 'isBestFriend', 'startDateMillis', 'firstMeetingMillis', 'birthdayMillis', 'photoUri', 'notes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(friendshipId);
+      }
+
+      match /groups/{groupId} {
+        allow get: if isOwner(userId) && isValidId(groupId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(groupId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'creationDateMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'pictureUri', 'creationDateMillis', 'firstMeetingMillis', 'members', 'notes', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidFriendGroup(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(groupId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidFriendGroup(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'pictureUri', 'creationDateMillis', 'firstMeetingMillis', 'members', 'notes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(groupId);
+      }
+
+      match /moments/{momentId} {
+        allow get: if isOwner(userId) && isValidId(momentId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(momentId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'category', 'eventDateMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'category', 'eventDateMillis', 'location', 'description', 'notes', 'mediaUris', 'mediaType', 'albumName', 'isFavorite', 'reminderEnabled', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidLifeMoment(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(momentId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidLifeMoment(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'eventDateMillis', 'location', 'description', 'notes', 'mediaUris', 'mediaType', 'albumName', 'isFavorite', 'reminderEnabled', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(momentId);
+      }
+
+      match /gifts/{giftId} {
+        allow get: if isOwner(userId) && isValidId(giftId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(giftId) &&
+                         incoming().keys().hasAll(['userId', 'name', 'occasion', 'direction', 'status', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'name', 'occasion', 'recipientName', 'giverName', 'direction', 'status', 'budget', 'purchaseDateMillis', 'givingDateMillis', 'photoUri', 'notes', 'reminderEnabled', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidGiftItem(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(giftId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidGiftItem(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'occasion', 'recipientName', 'giverName', 'direction', 'status', 'budget', 'purchaseDateMillis', 'givingDateMillis', 'photoUri', 'notes', 'reminderEnabled', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(giftId);
+      }
+
+      match /specialEvents/{eventId} {
+        allow get: if isOwner(userId) && isValidId(eventId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(eventId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'category', 'eventDateMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'category', 'eventDateMillis', 'isRecurringYearly', 'isFavorite', 'notify30Days', 'notify7Days', 'notify3Days', 'notify1Day', 'notifyOnDay', 'notifyHour', 'notifyMinute', 'notes', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidSpecialEvent(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(eventId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidSpecialEvent(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'eventDateMillis', 'isRecurringYearly', 'isFavorite', 'notify30Days', 'notify7Days', 'notify3Days', 'notify1Day', 'notifyOnDay', 'notifyHour', 'notifyMinute', 'notes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(eventId);
+      }
+
+      match /surprises/{surpriseId} {
+        allow get: if isOwner(userId) && isValidId(surpriseId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(surpriseId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'occasion', 'celebrationDateMillis', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'occasion', 'celebrationDateMillis', 'location', 'budget', 'giftIdea', 'cakeAndFood', 'guestList', 'decorations', 'completedDecorations', 'privateNotes', 'reminderEnabled', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidSurprisePlan(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(surpriseId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidSurprisePlan(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'occasion', 'celebrationDateMillis', 'location', 'budget', 'giftIdea', 'cakeAndFood', 'guestList', 'decorations', 'completedDecorations', 'privateNotes', 'reminderEnabled', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(surpriseId);
+      }
+
+      match /loveLetters/{letterId} {
+        allow get: if isOwner(userId) && isValidId(letterId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(letterId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'category', 'body', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'category', 'recipient', 'body', 'scheduledDateMillis', 'isLockedUntilDate', 'isFavorite', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidLoveLetter(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(letterId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidLoveLetter(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'recipient', 'body', 'scheduledDateMillis', 'isLockedUntilDate', 'isFavorite', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(letterId);
+      }
+
+      match /bucketList/{itemId} {
+        allow get: if isOwner(userId) && isValidId(itemId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(itemId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'category', 'isCompleted', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'category', 'targetDateMillis', 'isCompleted', 'completedDateMillis', 'notes', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidBucketListItem(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(itemId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidBucketListItem(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'targetDateMillis', 'isCompleted', 'completedDateMillis', 'notes', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(itemId);
+      }
+
+      match /notificationSettings/{settingId} {
+        allow get: if isOwner(userId) && isValidId(settingId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(settingId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'category', 'enabled', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'category', 'targetDateMillis', 'hour', 'minute', 'repeatYearly', 'enabled', 'soundName', 'createdAt', 'updatedAt']) &&
+                         validCreateTimestamps(incoming()) &&
+                         isValidNotificationSetting(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(settingId) &&
+                         incoming().userId == existing().userId &&
+                         validUpdateTimestamps(incoming()) &&
+                         isValidNotificationSetting(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'category', 'targetDateMillis', 'hour', 'minute', 'repeatYearly', 'enabled', 'soundName', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(settingId);
+      }
+    }
+  }
+}
