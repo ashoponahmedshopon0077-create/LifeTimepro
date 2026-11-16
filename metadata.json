@@ -1,0 +1,6 @@
+{
+  "name": "LifeTime",
+  "description": "LifeTime – Age, Love & Memories: calculate live age, track relationships and friendships, celebrate yearly anniversaries, plan gifts and surprises, and preserve life memories with cloud sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
