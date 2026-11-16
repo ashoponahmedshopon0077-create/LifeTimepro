@@ -18,7 +18,7 @@ jobs:
         run: |
           SETTINGS_FILE=$(find . -maxdepth 3 \( -name "settings.gradle.kts" -o -name "settings.gradle" \) | head -n 1)
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "::error::settings.gradle.kts not found! Please make sure all project files (app/, gradle/, build.gradle.kts, settings.gradle.kts) are pushed to GitHub, not just an empty folder or zip file."
+            echo "::error::settings.gradle.kts not found! Please make sure all project files (app/, gradle/, build.gradle.kts, settings.gradle.kts) are pushed to GitHub."
             exit 1
           fi
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
@@ -64,7 +64,6 @@ jobs:
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "Release secrets not configured yet. Skipping Release APK build."
           fi
 
       - name: Decode Release Keystore & Build Release APK
