@@ -1,0 +1,303 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile, language, theme, and privacy settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "email": { "type": "string", "description": "Google account email" },
+        "photoUrl": { "type": "string", "description": "Profile picture URL" },
+        "birthDateMillis": { "type": "integer", "description": "Birth date epoch millis" },
+        "birthTimeMinutes": { "type": "integer", "description": "Birth time in minutes from midnight" },
+        "timezoneId": { "type": "string", "description": "IANA timezone ID" },
+        "languageCode": { "type": "string", "enum": ["en", "bn"], "description": "Preferred UI language" },
+        "themeMode": { "type": "string", "enum": ["system", "light", "dark", "romantic"], "description": "Selected theme mode" },
+        "privacyPinHash": { "type": "string", "description": "SHA-256 hash of optional privacy PIN" },
+        "biometricEnabled": { "type": "boolean", "description": "Whether biometric unlock is enabled" },
+        "notificationsEnabled": { "type": "boolean", "description": "Global notification toggle" },
+        "dailyMemoryHour": { "type": "integer", "description": "Hour of day for On This Day reminder" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server update timestamp" }
+      },
+      "required": ["userId", "displayName", "languageCode", "themeMode", "createdAt", "updatedAt"]
+    },
+    "AgeProfile": {
+      "title": "AgeProfile",
+      "description": "Personal or family/friend age calculation profile.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "relation": { "type": "string" },
+        "birthDateMillis": { "type": "integer" },
+        "birthTimeMinutes": { "type": "integer" },
+        "isSelf": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "birthDateMillis", "createdAt", "updatedAt"]
+    },
+    "Relationship": {
+      "title": "Relationship",
+      "description": "Love and relationship counter with milestone timestamps.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "partnerName": { "type": "string" },
+        "partnerBirthdayMillis": { "type": "integer" },
+        "partnerPhotoUri": { "type": "string" },
+        "startDateMillis": { "type": "integer" },
+        "firstMeetingMillis": { "type": "integer" },
+        "firstConversationMillis": { "type": "integer" },
+        "firstMessageMillis": { "type": "integer" },
+        "firstPhoneCallMillis": { "type": "integer" },
+        "firstVideoCallMillis": { "type": "integer" },
+        "firstDateMillis": { "type": "integer" },
+        "firstProposalMillis": { "type": "integer" },
+        "firstKissMillis": { "type": "integer" },
+        "firstGiftMillis": { "type": "integer" },
+        "engagementDateMillis": { "type": "integer" },
+        "weddingDateMillis": { "type": "integer" },
+        "storyNote": { "type": "string" },
+        "isPrimary": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "partnerName", "startDateMillis", "createdAt", "updatedAt"]
+    },
+    "Friendship": {
+      "title": "Friendship",
+      "description": "Friendship duration and milestone tracker.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "friendName": { "type": "string" },
+        "isBestFriend": { "type": "boolean" },
+        "startDateMillis": { "type": "integer" },
+        "firstMeetingMillis": { "type": "integer" },
+        "birthdayMillis": { "type": "integer" },
+        "photoUri": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "friendName", "startDateMillis", "createdAt", "updatedAt"]
+    },
+    "FriendGroup": {
+      "title": "FriendGroup",
+      "description": "Group duration counter and member joining dates.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "pictureUri": { "type": "string" },
+        "creationDateMillis": { "type": "integer" },
+        "firstMeetingMillis": { "type": "integer" },
+        "members": { "type": "array" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "creationDateMillis", "createdAt", "updatedAt"]
+    },
+    "LifeMoment": {
+      "title": "LifeMoment",
+      "description": "Important life moments, memories, diary entries, and media references.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "eventDateMillis": { "type": "integer" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "notes": { "type": "string" },
+        "mediaUris": { "type": "array" },
+        "mediaType": { "type": "string" },
+        "albumName": { "type": "string" },
+        "isFavorite": { "type": "boolean" },
+        "reminderEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "category", "eventDateMillis", "createdAt", "updatedAt"]
+    },
+    "GiftItem": {
+      "title": "GiftItem",
+      "description": "Gift planner, gift history, and wishlist entry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "occasion": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "giverName": { "type": "string" },
+        "direction": { "type": "string", "enum": ["giving", "received", "wishlist"] },
+        "status": { "type": "string", "enum": ["planned", "purchased", "given"] },
+        "budget": { "type": "number" },
+        "purchaseDateMillis": { "type": "integer" },
+        "givingDateMillis": { "type": "integer" },
+        "photoUri": { "type": "string" },
+        "notes": { "type": "string" },
+        "reminderEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "occasion", "direction", "status", "createdAt", "updatedAt"]
+    },
+    "SpecialEvent": {
+      "title": "SpecialEvent",
+      "description": "Special days calendar entry, custom counter, and yearly notification settings.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "eventDateMillis": { "type": "integer" },
+        "isRecurringYearly": { "type": "boolean" },
+        "isFavorite": { "type": "boolean" },
+        "notify30Days": { "type": "boolean" },
+        "notify7Days": { "type": "boolean" },
+        "notify3Days": { "type": "boolean" },
+        "notify1Day": { "type": "boolean" },
+        "notifyOnDay": { "type": "boolean" },
+        "notifyHour": { "type": "integer" },
+        "notifyMinute": { "type": "integer" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "category", "eventDateMillis", "createdAt", "updatedAt"]
+    },
+    "SurprisePlan": {
+      "title": "SurprisePlan",
+      "description": "Romantic, birthday, or anniversary surprise planner.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "occasion": { "type": "string" },
+        "celebrationDateMillis": { "type": "integer" },
+        "location": { "type": "string" },
+        "budget": { "type": "number" },
+        "giftIdea": { "type": "string" },
+        "cakeAndFood": { "type": "string" },
+        "guestList": { "type": "array" },
+        "decorations": { "type": "array" },
+        "completedDecorations": { "type": "array" },
+        "privateNotes": { "type": "string" },
+        "reminderEnabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "occasion", "celebrationDateMillis", "createdAt", "updatedAt"]
+    },
+    "LoveLetter": {
+      "title": "LoveLetter",
+      "description": "Personal love letters, romantic messages, and scheduled future letters.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "recipient": { "type": "string" },
+        "body": { "type": "string" },
+        "scheduledDateMillis": { "type": "integer" },
+        "isLockedUntilDate": { "type": "boolean" },
+        "isFavorite": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "category", "body", "createdAt", "updatedAt"]
+    },
+    "BucketListItem": {
+      "title": "BucketListItem",
+      "description": "Couple bucket list and future dream item.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "targetDateMillis": { "type": "integer" },
+        "isCompleted": { "type": "boolean" },
+        "completedDateMillis": { "type": "integer" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "category", "isCompleted", "createdAt", "updatedAt"]
+    },
+    "NotificationSetting": {
+      "title": "NotificationSetting",
+      "description": "Custom reminder schedule and notification sound preferences.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "targetDateMillis": { "type": "integer" },
+        "hour": { "type": "integer" },
+        "minute": { "type": "integer" },
+        "repeatYearly": { "type": "boolean" },
+        "enabled": { "type": "boolean" },
+        "soundName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "category", "enabled", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile and personalization settings"
+    },
+    "/users/{userId}/ageProfiles/{profileId}": {
+      "schema": { "$ref": "#/entities/AgeProfile" },
+      "description": "Personal and family age calculator profiles"
+    },
+    "/users/{userId}/relationships/{relationshipId}": {
+      "schema": { "$ref": "#/entities/Relationship" },
+      "description": "Love and relationship counters and milestones"
+    },
+    "/users/{userId}/friendships/{friendshipId}": {
+      "schema": { "$ref": "#/entities/Friendship" },
+      "description": "Friendship duration and birthday entries"
+    },
+    "/users/{userId}/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/FriendGroup" },
+      "description": "Group counters and member joining dates"
+    },
+    "/users/{userId}/moments/{momentId}": {
+      "schema": { "$ref": "#/entities/LifeMoment" },
+      "description": "Important moments, diary entries, and memories"
+    },
+    "/users/{userId}/gifts/{giftId}": {
+      "schema": { "$ref": "#/entities/GiftItem" },
+      "description": "Gift planner, gift history, and wishlist"
+    },
+    "/users/{userId}/specialEvents/{eventId}": {
+      "schema": { "$ref": "#/entities/SpecialEvent" },
+      "description": "Special days calendar and custom counters"
+    },
+    "/users/{userId}/surprises/{surpriseId}": {
+      "schema": { "$ref": "#/entities/SurprisePlan" },
+      "description": "Surprise planner entries"
+    },
+    "/users/{userId}/loveLetters/{letterId}": {
+      "schema": { "$ref": "#/entities/LoveLetter" },
+      "description": "Love letters and scheduled messages"
+    },
+    "/users/{userId}/bucketList/{itemId}": {
+      "schema": { "$ref": "#/entities/BucketListItem" },
+      "description": "Couple bucket list and future dreams"
+    },
+    "/users/{userId}/notificationSettings/{settingId}": {
+      "schema": { "$ref": "#/entities/NotificationSetting" },
+      "description": "Custom notification rules"
+    }
+  }
+}
